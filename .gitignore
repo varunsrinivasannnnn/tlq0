@@ -1,0 +1,30 @@
+# Secrets - NEVER COMMIT
+.env
+config.toml
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python bytecode (compiled files)
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE settings
+.idea/
+*.iml
+.vscode/
+
+# Cache directories
+.cache/
+.pytest_cache/
+.ruff_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Separate project (has its own repo)
+ProofOS/

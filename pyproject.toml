@@ -1,0 +1,29 @@
+# Project configuration for AlphaProof++
+# =======================================
+# This file tells Python tools about our project.
+# Think of it like package.json (Node) or pom.xml (Java).
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "alphaproofpp"
+version = "0.1.0"
+description = "AlphaProof++ - The Last Question, Answered"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]
