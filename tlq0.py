@@ -17,6 +17,8 @@ import json
 import tomllib
 import hashlib
 from pathlib import Path
+from contextlib import ExitStack, contextmanager
+from typing import Literal, NamedTuple
 from dataclasses import dataclass, asdict
 from lean_dojo import LeanGitRepo, Theorem, Dojo, ProofFinished, TacticState, LeanError
 
@@ -33,15 +35,17 @@ ATTEMPTS_DIR = "attempts"
 # ===============================================
 
 def load_config() -> dict:
-    """Loads config from config.toml"""
+    """Loads config from config.toml.
+
+    Raises:
+        FileNotFoundError: If config file doesn't exist.
+    """
     config_path = Path(__file__).parent / CONFIG_FILE_NAME
 
     if not config_path.exists():
-        print("Please check config file name and path")
-        return {}
+        raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with open(config_path, "rb") as f:
-        print("Config loaded successfully!")
         return tomllib.load(f)
 
 # ===============================================
@@ -49,7 +53,7 @@ def load_config() -> dict:
 # ===============================================
 
 def stable_hash(*parts: str) -> str:
-    return hashlib.sha1(("\n".join(parts)).encode()).hexdigest()
+    return hashlib.sha1(json.dumps(parts).encode()).hexdigest()
 
 def now_timestamp() -> float:
     return time.time()
@@ -57,6 +61,13 @@ def now_timestamp() -> float:
 # ===============================================
 # Section 4: Domain Types
 # ===============================================
+
+AttemptRecordStatus = Literal["solved", "not_solved", "error"]
+
+class RunTacticResult(NamedTuple):
+    status: str
+    message: str | None
+    is_solved: bool
 
 @dataclass(frozen=True)
 class RepoSpec:
@@ -75,7 +86,7 @@ class AttemptRecord:
     attempt_id: str
     theorem_spec: TheoremSpec
     tactics: list[str]
-    status: str # "solved" | "not_solved" | "error"
+    status: AttemptRecordStatus
     init_pp: str
     final_pp: str | None = None
     error_msg: str | None = None
@@ -86,35 +97,22 @@ class AttemptRecord:
 # Section 5: LeanDojo Adapter
 # ===============================================
 
-class DojoSession:
-    """Wrapper around LeanDojo for a cleaner interaction"""
-    def __init__(self, theorem_spec: TheoremSpec):
-        self.theorem_spec = theorem_spec
-        self.dojo = None
-        self.current_state = None
+@contextmanager
+def dojo_session(theorem_spec: TheoremSpec):
+    repo = LeanGitRepo(theorem_spec.repo_spec.repo_url, theorem_spec.repo_spec.commit)
+    theorem = Theorem(repo, Path(theorem_spec.file_path), theorem_spec.theorem_name)
+    with Dojo(theorem) as (dojo, current_state):
+        yield dojo, current_state
 
-    def __enter__(self):
-        repo = LeanGitRepo(
-            self.theorem_spec.repo_spec.repo_url,
-            self.theorem_spec.repo_spec.commit
-        )
-        theorem = Theorem(
-            repo,
-            Path(self.theorem_spec.file_path),  # file_path second
-            self.theorem_spec.theorem_name  # theorem_name third
-        )
-        self.dojo, self.current_state = Dojo(theorem).__enter__()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.dojo is not None:
-            self.dojo.__exit__(exc_type=exc_type, exc_val=exc_val, exc_tb=exc_tb)
-        return False
+class TacticRunner:
+    def __init__(self, dojo : Dojo, current_state : TacticState):
+        self.dojo = dojo
+        self.current_state = current_state
 
     def get_initial_pp(self) -> str:
         return self.current_state.pp
 
-    def run_tactic(self, tactic: str) -> tuple[str, str | None, bool]:
+    def run_tactic(self, tactic: str) -> RunTacticResult:
         """
         Run a tactic on the current state.
         Returns:
@@ -126,17 +124,17 @@ class DojoSession:
         result = self.dojo.run_tac(state=self.current_state, tactic=tactic)
 
         if isinstance(result, ProofFinished):
-            return "solved", None, True
+            return RunTacticResult("solved", None, True)
 
         elif isinstance(result, TacticState):
             self.current_state = result
-            return "ok", result.pp, False
+            return RunTacticResult("ok", result.pp, False)
 
         elif isinstance(result, LeanError):
-            return "error", result.error, False
+            return RunTacticResult("error", result.error, False)
 
         else:
-            return "error", f"unknown result type {result}", False
+            return RunTacticResult("error", f"unknown result type {result}", False)
 
 # ===============================================
 # Section 6: Artifact Types
@@ -166,40 +164,34 @@ def attempt_proof(theorem_spec: TheoremSpec, tactics: list[str]) -> AttemptRecor
         theorem_spec.theorem_name,
         *tactics)
     started_ts = now_timestamp()
-    dojo_session = DojoSession(theorem_spec)
-    initial_state_pp = dojo_session.get_initial_pp()
-    status = None
-    message = None
-    is_solved = False
+    status: AttemptRecordStatus = "not_solved"
+    error_msg: str | None = None
+    final_pp: str | None = None
 
-    for tactic in tactics:
-        status, message, is_solved = dojo_session.run_tactic(tactic)
-        if status == "solved":
-            break
-        elif status == "error":
-            break
-        elif status == "ok":
-            continue
-
-    final_status = ""
-
-    if is_solved:
-        final_status = "solved"
-    else:
-        if status == "ok":
-            final_status = "not_solved"
-        else:
-            final_status = "error"
+    with dojo_session(theorem_spec) as (dojo, current_state):
+        init_pp = current_state.pp
+        tactic_runner = TacticRunner(dojo, current_state)
+        for tactic in tactics:
+            run_tactic_result = tactic_runner.run_tactic(tactic)
+            if run_tactic_result.status == "solved":
+                status = "solved"
+                break
+            elif run_tactic_result.status == "error":
+                status = "error"
+                error_msg = run_tactic_result.message
+                break
+            else:
+                final_pp = run_tactic_result.message
 
     completed_ts = now_timestamp()
     attempt_record = AttemptRecord(
         attempt_id=attempt_id,
         theorem_spec=theorem_spec,
         tactics=tactics,
-        status=final_status,
-        init_pp=initial_state_pp,
-        final_pp= message if final_status == "ok" else None,
-        error_msg=message if final_status == "error" else None,
+        status=status,
+        init_pp=init_pp,
+        final_pp=final_pp,
+        error_msg=error_msg,
         started_ts=started_ts,
         completed_ts=completed_ts
     )
@@ -209,7 +201,11 @@ def attempt_proof(theorem_spec: TheoremSpec, tactics: list[str]) -> AttemptRecor
 
 if __name__ == "__main__":
     print("tlq v" + __version__)
-    config = load_config()
+    try:
+        config = load_config()
+    except FileNotFoundError as e:
+        print(f"Error {e}")
+        print(f"Error {e}")
 
     # Test our domain types
     print("\n--- Testing Domain Types ---")
@@ -263,15 +259,23 @@ if __name__ == "__main__":
 
     # Test LeanDojo Adapter
     print("\n--- Testing LeanDojo Adapter ---")
-    with DojoSession(theorem_spec) as session:
-        print(f"Initial state: {session.get_initial_pp()}")
-
-        status, msg, solved = session.run_tactic("rw [add_assoc, add_comm b, ←add_assoc]")
+    with dojo_session(theorem_spec) as (dojo, current_state):
+        initial_state = current_state.pp
+        tactic_runner = TacticRunner(dojo, current_state)
+        print(f"Initial state: {initial_state}")
+        status, msg, solved = tactic_runner.run_tactic("rw [add_assoc, add_comm b, ←add_assoc]")
         print(f"After tactic: status={status}, solved={solved}")
         if msg:
             print(f"Message: {msg}")
 
-
+    # Test Proof Attempt Orchestration
+    result = attempt_proof(
+        theorem_spec=theorem_spec,
+        tactics=["rw [add_assoc, add_comm b, ←add_assoc]"]
+    )
+    print(f"Attempt result: {result.status}")
+    print(f"Attempt ID: {result.attempt_id}")
+    print(f"Saved to: .cache/tlq0/attempts/{result.attempt_id}/attempt.json")
 
     # Test immutability of frozen dataclasses
     try:
