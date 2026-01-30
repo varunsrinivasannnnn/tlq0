@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 from typing import NewType
 from json import dumps
+from dataclasses import dataclass
 
 
 __version__ = "0.1.0"
@@ -50,7 +51,27 @@ def hash_object(obj: object) -> str:
 # SECTION 2: ERROR TAXONOMY + PRECONDITIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+class TLQ0Error(Exception):
+    """Base exception for all tlq0 errors"""
+    pass
 
+class ConfigError(TLQ0Error):
+    """Raised when configuration is invalid."""
+    pass
+
+class ValidationError(TLQ0Error):
+    """Raised when data validation fails."""
+    pass
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECTION 3: CONFIG SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass(frozen=True)
+class SearchConfig:
+    max_nodes: int
+    max_depth: int
+    timeout_s: float
 
 if __name__ == "__main__":
     print(f"tlq0 v{__version__}")
