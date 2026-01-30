@@ -1,0 +1,2 @@
+Error: Error code: 400 - {'error': {'message': "Unsupported parameter: 'temperature' is not supported with this model.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': None}}
+Model attempted: gpt-5.2-pro

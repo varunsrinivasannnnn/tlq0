@@ -1,0 +1,2 @@
+Error: Request timed out.
+Model attempted: gpt-5.2-pro

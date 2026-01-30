@@ -12,20 +12,62 @@ Use this file to onboard Cursor/Claude to the tlq0 project.
 
 **Architecture**: MONOLITH - everything in `tlq0.py`.
 
-**Timeline**: 100 days to beat AlphaProof (aggressive target, that's the mindset).
+**Timeline**: 100 days (aggressive target).
 
 ---
 
-## Project Files
+## Current Status
 
-All files for ChatGPT Project are in `data/chatgpt_project/`:
+**Phase**: 1 - Deterministic Experiment Harness  
+**Status**: In Progress
 
-| File | Purpose |
+Check `data/phases/` for detailed phase guides.
+
+---
+
+## Project File Structure
+
+```
+tlq0/
+├── tlq0.py                     ← THE MONOLITH (all code)
+├── config.toml                 ← API keys, settings
+├── pyproject.toml              ← Python project config
+├── runs/                       ← Output from runs (created at runtime)
+└── data/
+    ├── MASTER_CONTEXT.md       ← THIS FILE
+    ├── phases/                 ← GPT Pro responses by phase
+    │   ├── phase_00_roadmap.md
+    │   ├── phase_01_harness.md
+    │   └── ...
+    └── chatgpt_project/        ← Files for ChatGPT Project
+        ├── system_prompt.md
+        ├── intelligence_journey.md
+        ├── project_context.md
+        └── initial_prompt.md
+```
+
+---
+
+## ChatGPT Project Files (data/chatgpt_project/)
+
+These files are uploaded to the ChatGPT Project for context:
+
+| File | Purpose | Content Summary |
+|------|---------|-----------------|
+| `system_prompt.md` | Instructions for GPT | Role, constraints, monolith architecture, communication style |
+| `intelligence_journey.md` | Philosophical foundation | The "WHY" - from Rajinikanth to Superintelligence, intelligence = compression, AlphaZero escape, math as sandbox |
+| `project_context.md` | Bridge to implementation | Core thesis, 3 revolutionary ideas (Macro Compiler, Delta-State, MDL-Lemma Economy), convergent architecture from 8 models |
+| `initial_prompt.md` | First prompt template | Request for complete phase breakdown with extreme detail |
+
+---
+
+## Phase Guides (data/phases/)
+
+| File | Content |
 |------|---------|
-| `system_prompt.md` | Copy to ChatGPT Instructions field |
-| `intelligence_journey.md` | Upload - philosophical foundation |
-| `project_context.md` | Upload - bridge to implementation |
-| `initial_prompt.md` | First message to send |
+| `phase_00_roadmap.md` | Initial project roadmap (full breakdown of all phases) |
+| `phase_01_harness.md` | Phase 1: Deterministic Experiment Harness - section architecture, Python concepts, definition of done |
+| (more added as we progress) | |
 
 ---
 
@@ -59,30 +101,40 @@ All files for ChatGPT Project are in `data/chatgpt_project/`:
 
 ---
 
-## 100-Day Timeline (Private - Not Shared with GPT)
+## Workflow
 
-| Day | Milestone |
-|-----|-----------|
-| 1-15 | M0: Foundation |
-| 16-35 | M1: DSL + search |
-| 36-55 | M2: Forward gen + data |
-| 56-80 | M3: First learning |
-| 81-100 | M4+: GNN + delta |
+**Primary**: ChatGPT 5.2 Pro (implementation guidance)  
+**Secondary**: Cursor/Claude (code review, debugging, Python questions)  
+**Escalation**: Deep Research or Gemini (major architectural decisions)
 
 ---
 
 ## Starting a New Cursor Chat
 
-Tag this file and say:
+**Quick start:**
+```
+@data/MASTER_CONTEXT.md
 
-> "Read the master context. I'm on Day X of 100. Help me with [task]."
+I'm on Phase [N]. Help me with [task].
+```
 
-For code context: `@tlq0.py`
+**With code:**
+```
+@data/MASTER_CONTEXT.md @tlq0.py
 
----
+Review SECTION [X].
+```
 
-## Workflow
+**With phase context:**
+```
+@data/MASTER_CONTEXT.md @data/phases/phase_01_harness.md @tlq0.py
 
-- **Primary**: ChatGPT UI (has full context)
-- **Secondary**: Cursor/Claude (for code reviews, debugging)
-- **Escalation**: GPT API (for major decisions)
+I'm implementing [specific thing] from Phase 1.
+```
+
+**With full philosophical context (rare):**
+```
+@data/MASTER_CONTEXT.md @data/chatgpt_project/intelligence_journey.md @data/chatgpt_project/project_context.md
+
+Help me think through [architectural decision].
+```

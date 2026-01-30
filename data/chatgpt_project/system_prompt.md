@@ -115,3 +115,5 @@ Look at the code to understand current progress.
 - A fine-tuned LLM on human proofs
 - Anything requiring datacenter compute
 - A black box
+
+And finally, I am also attempting to learn python along this project so please DO NOT provide code unless I explicity ask you for paritcular snippets and that too if and only if I have tried and I really can't get going. So you providing code should be an unblocker. I hope that I can use active recall and my creativity combined with yours, to build what is possibly the most ambitious project ever attempted in history. 
