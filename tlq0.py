@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 from typing import NewType
 from json import dumps
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 __version__ = "0.1.0"
@@ -69,9 +69,26 @@ class ValidationError(TLQ0Error):
 
 @dataclass(frozen=True)
 class SearchConfig:
-    max_nodes: int
-    max_depth: int
-    timeout_s: float
+    """Snapshot of the search configuration."""
+    max_nodes: int = 1000
+    max_depth: int = 50
+    timeout_s: float = 60.0
+
+@dataclass(frozen=True)
+class TrainConfig:
+    """Snapshot of the training configuration."""
+    seed: int = 0
+    device: str = "cpu"
+
+@dataclass(frozen=True)
+class TLQ0Config:
+    """Snapshot of the current tlq configuration."""
+    schema_version : int = 1
+    search_config : SearchConfig = field(default_factory=SearchConfig)
+    train_config : TrainConfig = field(default_factory=TrainConfig)
+
+
+
 
 if __name__ == "__main__":
     print(f"tlq0 v{__version__}")
