@@ -28,3 +28,6 @@ Thumbs.db
 
 # Separate project (has its own repo)
 ProofOS/
+
+# Experiment runs (generated outputs)
+runs/

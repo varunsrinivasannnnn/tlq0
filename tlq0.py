@@ -17,10 +17,14 @@ Core thesis: Intelligence = compression of predictive structure over state trans
 from __future__ import annotations
 
 import hashlib
+import platform
+import random
+import sys
 from typing import NewType
 from json import dumps
 from dataclasses import dataclass, field
-
+from pathlib import Path
+import time
 
 __version__ = "0.1.0"
 __author__ = "Varun Srinivasan"
@@ -87,6 +91,68 @@ class TLQ0Config:
     search_config : SearchConfig = field(default_factory=SearchConfig)
     train_config : TrainConfig = field(default_factory=TrainConfig)
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECTION 4: RUN DIRECTORY + ATOMIC WRITES + ENVIRONMENT SNAPSHOT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def timestamp_now() -> float:
+    """Returns the current UNIX"""
+    return time.time()
+
+def create_run_dir(seed: int) -> Path:
+    """Creates the run directory"""
+    current_ts = timestamp_now()
+    p = Path(DEFAULT_RUNS_DIR) / f"run_{current_ts}_seed_{seed}"
+    p.mkdir(parents=True, exist_ok=True)
+    (p / "artifacts").mkdir(parents=True, exist_ok=True)
+    return p
+
+def atomic_writing(path: Path, content: str):
+    """Ensures atomic saving of the files"""
+    (path.parent / (path.name + ".tmp")).write_text(content)
+    (path.parent / (path.name + ".tmp")).replace(path)
+
+def get_env_snapshot() -> dict:
+    """Returns a dictionary capturing the current state of the environment."""
+    return {
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "tlq0_version": __version__,
+        "timestamp": timestamp_now()}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECTION 5: RNG DISCIPLINE + DETERMINISM LAYER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def seed_everything(seed: int):
+    """Unifying the seed for all RNG operations for every run."""
+    return random.seed(seed)
+
+
+class RNG:
+    def __init__(self, seed: int):
+        self._rng = random.Random(seed)
+
+    def random(self):
+        return self._rng.random()
+
+    def randint(self, a: int, b: int):
+        return self._rng.randint(a, b)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECTION 6: STRUCTURED EVENT LOGGING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class EventLogger:
+    def __init__(self, path: Path):
+        self.path = path
+
+    def log(self, kind: str, payload: dict):
+        with self.path.open("a") as f:
+            f.write(stable_json_dumps({
+                "ts": timestamp_now(),
+                "kind": kind,
+                "payload": payload}) + "\n")
 
 
 
